@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05060d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>МАГ В 2026 — Вайс-Сити</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+  <div id="look-zone"></div>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+  <div id="scan"></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud" class="hidden">
+    <div id="hud-tl">
+      <div class="charline">
+        <div class="portrait" id="hud-portrait"><canvas width="128" height="128"></canvas><i></i></div>
+        <div class="char-meta">
+          <div class="char-name" id="hud-name">МАГ</div>
+          <div class="char-sub" id="hud-sub">ОРДЕН ТЕНЕЙ</div>
+        </div>
+      </div>
+      <div class="bars">
+        <div class="bar hp"><i id="bar-hp"></i><b></b></div>
+        <div class="bar mana"><i id="bar-mana"></i><b></b></div>
+      </div>
+      <div id="bond-chip"><span class="bond-dot"></span><span id="bond-val">СВЯЗЬ 34</span></div>
+    </div>
+
+    <div id="hud-tr">
+      <div class="clockline"><span id="clock">21:24</span><span id="day">СР</span></div>
+      <div id="money">$0</div>
+      <div id="wanted"></div>
+      <button id="btn-pause" class="icon-btn" aria-label="Пауза"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button>
+    </div>
+
+    <div id="mission-panel" class="hidden">
+      <div class="mp-kicker" id="mission-kicker">ОПЕРАЦИЯ</div>
+      <div class="mp-title" id="mission-title">ПРОБУЖДЕНИЕ</div>
+      <div class="mp-obj" id="mission-obj">Найти выход</div>
+      <div class="mp-bar"><i id="mission-bar"></i></div>
+    </div>
+
+    <div id="minimap-wrap">
+      <div id="minimap-ring"><canvas id="minimap" width="360" height="360"></canvas><div class="mm-n"></div></div>
+      <div id="region">ВАЙС-СИТИ</div>
+      <div id="waypoint-dist"></div>
+    </div>
+
+    <div id="ammo" class="hidden">
+      <div class="ammo-row"><span id="ammo-mag">12</span><span class="ammo-sep">/</span><span id="ammo-res">48</span></div>
+      <div id="weapon-name">ПИСТОЛЕТ</div>
+    </div>
+
+    <div id="cast-info" class="hidden"><span id="cast-name">ОГНЕННЫЙ ШАР</span><i id="cast-cd"></i></div>
+
+    <div id="detect" class="hidden"><span></span><i></i></div>
+
+    <div id="toast-zone"></div>
+
+    <!-- touch controls -->
+    <div id="touch">
+      <div id="stick-zone">
+        <div id="stick"><div id="stick-ring"></div><div id="stick-knob"></div></div>
+      </div>
+      <div id="actions">
+        <button id="btn-switch" class="round ghost" aria-label="Смена героя">
+          <svg viewBox="0 0 32 32"><path d="M11 12a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm10-4a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/><path d="M5 26c2-5 11-5 13 0M17 24c2-4 9-4 11 0"/></svg>
+        </button>
+        <button id="btn-action" class="pill hidden"><span id="action-label">ДЕЙСТВИЕ</span><i></i></button>
+        <button id="btn-fire" class="round fire" aria-label="Атака">
+          <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="9"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7"/><circle cx="20" cy="20" r="2.2" class="fill"/></svg>
+          <span class="fire-hint" id="fire-hint"></span>
+        </button>
+        <button id="btn-ability" class="round ability" aria-label="Способность">
+          <svg viewBox="0 0 32 32"><path d="M16 3l3.2 8.4L28 14l-7 5.3L23 28l-7-4.6L9 28l2-8.7L4 14l8.8-2.6Z"/></svg>
+          <span class="ability-dot"></span>
+        </button>
+        <button id="btn-jump" class="round small" aria-label="Прыжок">
+          <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+        </button>
+        <button id="btn-crouch" class="round small" aria-label="Присесть">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="aim-dot"></div>
+  </div>
+
+  <!-- ================= radial ================= -->
+  <div id="radial" class="overlay hidden">
+    <div class="radial-core"><div class="radial-title" id="radial-title">МАГИЯ</div><div class="radial-center" id="radial-center"></div></div>
+    <div id="radial-slots"></div>
+  </div>
+
+  <!-- ================= character wheel ================= -->
+  <div id="wheel" class="overlay hidden">
+    <div class="wheel-bg"></div>
+    <div class="wheel-head"><span>КТО СЕЙЧАС</span><em>ВРЕМЯ ЗАМЕДЛЕНО</em></div>
+    <div class="wheel-stage">
+      <div class="hero-card" data-hero="lucia">
+        <div class="hc-glow"></div>
+        <div class="hc-portrait"><img id="wheel-lucia" alt=""></div>
+        <div class="hc-info">
+          <div class="hc-tag">УЛИЧНАЯ ВЗЛОМЩИЦА</div>
+          <div class="hc-name">ЛЮСИЯ</div>
+          <div class="hc-stats">
+            <div><span>ОГОНЬ</span><i><b style="width:78%"></b></i></div>
+            <div><span>ВЗЛОМ</span><i><b style="width:92%"></b></i></div>
+            <div><span>ВОЖДЕНИЕ</span><i><b style="width:86%"></b></i></div>
+          </div>
+          <div class="hc-loc" id="lucia-loc">ЮГ БИЧ · 0.4 КМ</div>
+        </div>
+      </div>
+      <div class="wheel-center">
+        <div class="bond-ring">
+          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="bg"/><circle cx="60" cy="60" r="52" class="fg" id="bond-circle"/></svg>
+          <div class="bond-num"><b id="bond-num">34</b><span>СВЯЗЬ</span></div>
+        </div>
+        <div class="wheel-lock" id="wheel-lock"><span>ЗАБЛОКИРОВАНО</span><em>Сюжетная сцена</em></div>
+      </div>
+      <div class="hero-card" data-hero="mage">
+        <div class="hc-glow"></div>
+        <div class="hc-portrait"><img id="wheel-mage" alt=""></div>
+        <div class="hc-info">
+          <div class="hc-tag">МАГ ОРДЕНА ТЕНЕЙ</div>
+          <div class="hc-name">МАГ</div>
+          <div class="hc-stats">
+            <div><span>МАГИЯ</span><i><b style="width:94%"></b></i></div>
+            <div><span>ВРЕМЯ</span><i><b style="width:70%"></b></i></div>
+            <div><span>ИЛЛЮЗИИ</span><i><b style="width:84%"></b></i></div>
+          </div>
+          <div class="hc-loc" id="mage-loc">ЦЕНТР · 1.1 КМ</div>
+        </div>
+      </div>
+    </div>
+    <div class="wheel-foot"><span>ОТПУСТИ, ЧТОБЫ ВЫБРАТЬ</span></div>
+  </div>
+
+  <!-- ================= dialogue ================= -->
+  <div id="dialogue" class="hidden">
+    <div class="dlg-grad"></div>
+    <div class="dlg-box">
+      <div class="dlg-speaker"><span id="dlg-name">ЛЮСИЯ</span><i id="dlg-role">ВЗЛОМЩИЦА</i></div>
+      <div class="dlg-text" id="dlg-text"></div>
+      <div class="dlg-choices" id="dlg-choices"></div>
+      <div class="dlg-next" id="dlg-next">ПРОДОЛЖИТЬ <i>›</i></div>
+    </div>
+  </div>
+
+  <!-- ================= map ================= -->
+  <div id="map-screen" class="overlay hidden">
+    <div class="map-head">
+      <div><span class="kicker">ЛЕОНИДА · 2026</span><h2>КАРТА</h2></div>
+      <div class="map-legend">
+        <span><i class="dot mission"></i>ОПЕРАЦИЯ</span>
+        <span><i class="dot contract"></i>КОНТРАКТ</span>
+        <span><i class="dot relic"></i>АРТЕФАКТ</span>
+        <span><i class="dot safe"></i>УКРЫТИЕ</span>
+      </div>
+      <button id="map-close" class="icon-btn" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="map-wrap"><canvas id="map-canvas" width="1600" height="1200"></canvas><div id="map-tip"></div></div>
+    <div class="map-foot"><span id="map-coords">25.7617° N · 80.1918° W</span><span>КОСНИСЬ, ЧТОБЫ ПОСТАВИТЬ ТОЧКУ</span><button id="map-tp" class="ghost-btn hidden">ПЕРЕМЕСТИТЬСЯ · 250</button></div>
+  </div>
+
+  <!-- ================= pause / settings ================= -->
+  <div id="pause" class="overlay hidden">
+    <div class="pause-panel">
+      <div class="pause-head"><span class="kicker">ПАУЗА</span><h2>МАГ В 2026</h2><div id="pause-sub">ГЛАВА I · ЧУЖОЙ ГОД</div></div>
+      <div class="pause-stats">
+        <div><span>СВЯЗЬ</span><b id="p-bond">34</b></div>
+        <div><span>АРТЕФАКТЫ</span><b id="p-art">0 / 5</b></div>
+        <div><span>ОПЕРАЦИИ</span><b id="p-ops">0 / 45</b></div>
+        <div><span>БАЛАНС</span><b id="p-money">$0</b></div>
+      </div>
+      <div class="pause-menu">
+        <button id="p-resume" class="wide-btn">ПРОДОЛЖИТЬ</button>
+        <button id="p-map" class="wide-btn">КАРТА</button>
+        <button id="p-codex" class="wide-btn">ДОСЬЕ</button>
+        <button id="p-save" class="wide-btn">СОХРАНИТЬ</button>
+        <button id="p-menu" class="wide-btn dim">В ГЛАВНОЕ МЕНЮ</button>
+      </div>
+      <div id="codex-panel" class="hidden">
+        <div class="codex-head"><span class="kicker">ДОСЬЕ</span><em>45 ОПЕРАЦИЙ · 6 ГЛАВ</em></div>
+        <div id="codex-chapters"></div>
+        <div class="codex-foot">
+          <span>ФАУНА</span><b id="codex-fauna">172 ВИДА</b>
+          <span>СВЯЗЬ</span><b id="codex-bond">34</b>
+          <span>ФЛАГИ</span><b id="codex-flags">0</b>
+        </div>
+      </div>
+      <div class="pause-settings">
+        <div class="set-row"><span>ГРАФИКА</span><div class="seg" id="quality-seg"><button data-q="low">НИЗКО</button><button data-q="medium">СРЕДНЕ</button><button data-q="high">ВЫСОКО</button><button data-q="ultra">УЛЬТРА</button></div></div>
+        <div class="set-row"><span>МУЗЫКА</span><input type="range" id="vol-music" min="0" max="100" value="32"></div>
+        <div class="set-row"><span>ЗВУКИ</span><input type="range" id="vol-sfx" min="0" max="100" value="65"></div>
+        <div class="set-row"><span>ЧУВСТВИТЕЛЬНОСТЬ</span><input type="range" id="sens" min="40" max="180" value="100"></div>
+        <div class="set-row"><span>ПОЛНЫЙ ЭКРАН</span><button id="p-fullscreen" class="mini-btn">ВКЛЮЧИТЬ</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= main menu ================= -->
+  <div id="menu">
+    <div class="menu-bg-grad"></div>
+    <div class="menu-grid"></div>
+    <div class="menu-left">
+      <div class="menu-kicker"><i></i>ВАЙС-СИТИ · ЛЕОНИДА · 2026</div>
+      <h1 class="game-title"><span>МАГ</span><span class="title-2">В <b>2026</b></span></h1>
+      <div class="menu-tag">Магия почти исчезла.<br>Этот город — ещё нет.</div>
+      <div class="menu-actions">
+        <button id="btn-new" class="menu-btn primary">НОВАЯ ИСТОРИЯ<i>↗</i></button>
+        <button id="btn-continue" class="menu-btn" disabled>ПРОДОЛЖИТЬ<i>↗</i></button>
+        <button id="btn-settings" class="menu-btn">НАСТРОЙКИ<i>↗</i></button>
+      </div>
+      <div class="menu-meta">
+        <span>ГЛАВА I</span><span>·</span><span>45 ОПЕРАЦИЙ</span><span>·</span><span>2 ГЕРОЯ</span>
+      </div>
+    </div>
+    <div class="menu-right">
+      <div class="menu-card">
+        <div class="mc-head"><span>СЕЙЧАС В ГОРОДЕ</span><b id="menu-time">21:24</b></div>
+        <div class="mc-weather"><i id="menu-weather-icon"></i><span id="menu-weather">ЯСНО · +27°</span></div>
+        <div class="mc-rows">
+          <div><span>РАЙОН</span><b>ВАЙС-СИТИ</b></div>
+          <div><span>ПОГОДА</span><b id="mc-weather2">ШТИЛЬ</b></div>
+          <div><span>РОЗЫСК</span><b id="mc-wanted">ЧИСТО</b></div>
+        </div>
+        <div class="mc-bond"><span>СВЯЗЬ МАГ — ЛЮСИЯ</span><div><i id="menu-bond"></i></div></div>
+      </div>
+      <div class="menu-coords">25.7617° N<br>80.1918° W</div>
+    </div>
+    <div class="menu-foot">
+      <span>© 2026 ORDO UMBRARUM / LUX CREW</span>
+      <span class="menu-hint">НАУШНИКИ РЕКОМЕНДУЮТСЯ</span>
+    </div>
+    <div id="menu-settings" class="hidden">
+      <div class="menu-set-panel">
+        <div class="ms-head"><span class="kicker">НАСТРОЙКИ</span><button id="ms-close" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div class="set-row"><span>ГРАФИКА</span><div class="seg" id="menu-quality"><button data-q="low">НИЗКО</button><button data-q="medium">СРЕДНЕ</button><button data-q="high">ВЫСОКО</button><button data-q="ultra">УЛЬТРА</button></div></div>
+        <div class="set-row"><span>МУЗЫКА</span><input type="range" id="menu-music" min="0" max="100" value="32"></div>
+        <div class="set-row"><span>ЗВУКИ</span><input type="range" id="menu-sfx" min="0" max="100" value="65"></div>
+        <div class="set-row"><span>ЯЗЫК</span><b class="set-val">РУССКИЙ</b></div>
+        <div class="set-row"><span>ПОЛНЫЙ ЭКРАН</span><button id="menu-fullscreen" class="mini-btn">ВКЛЮЧИТЬ</button></div>
+        <p class="ms-note">Динамическое разрешение и уровень детализации подстраиваются под устройство. На слабых телефонах выберите «НИЗКО».</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= chapter card ================= -->
+  <div id="chapter-card" class="hidden">
+    <div class="cc-line"></div>
+    <div class="cc-kicker">ГЛАВА <span id="cc-num">I</span></div>
+    <div class="cc-title" id="cc-title">ЧУЖОЙ ГОД</div>
+    <div class="cc-sub" id="cc-sub">ВАЙС-СИТИ · 2026</div>
+  </div>
+
+  <!-- ================= ending ================= -->
+  <div id="ending" class="hidden">
+    <div class="end-bg"></div>
+    <div class="end-content">
+      <div class="kicker" id="end-kicker">ФИНАЛ</div>
+      <h1 id="end-title">ВОЗВРАЩЕНИЕ</h1>
+      <p id="end-text"></p>
+      <div class="end-stats" id="end-stats"></div>
+      <button id="end-continue" class="wide-btn">ВЕРНУТЬСЯ В ГОРОД</button>
+    </div>
+  </div>
+
+  <!-- ================= loading ================= -->
+  <div id="loading">
+    <div class="load-mark">M<span>2026</span></div>
+    <div class="load-title">МАГ В 2026</div>
+    <div class="load-bar"><i id="load-progress"></i></div>
+    <div class="load-label" id="load-label">СБОРКА ГОРОДА</div>
+    <div class="load-tip" id="load-tip">Вайс-Сити никогда не спит.</div>
+  </div>
+</div>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
