@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Hero viewer</title>
+<style>
+  html,body{margin:0;height:100%;background:#1c1f24;overflow:hidden}
+  canvas{display:block}
+  #hint{position:fixed;left:8px;top:8px;color:#9fb0c0;font:11px monospace}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.js",
+  "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hint">hero viewer</div>
+<script type="module">
+import * as THREE from 'three';
+import { HeroModel } from '/src/heromodel.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'mage';
+const view = params.get('view') || 'face';
+const pose = params.get('pose') || 'idle';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x23262c);
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.01, 100);
+
+// studio rig: key, fill, rim, plus a soft ambient dome
+const key = new THREE.DirectionalLight(0xffffff, 3.0);
+key.position.set(2.4, 3.2, 3.4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -3; key.shadow.camera.right = 3;
+key.shadow.camera.top = 3; key.shadow.camera.bottom = -3;
+key.shadow.bias = -0.0005;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xbcd4ff, 1.15);
+fill.position.set(-3.2, 1.6, 2.2);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffd9c0, 1.8);
+rim.position.set(-1.2, 2.4, -3.6);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a2620, 0.85));
+scene.add(new THREE.AmbientLight(0xffffff, 0.18));
+
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(6, 48),
+  new THREE.MeshStandardMaterial({ color: 0x3a3d44, roughness: 0.9, metalness: 0.0 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const model = new HeroModel(id);
+scene.add(model.group);
+
+const states = {
+  idle: {},
+  run: { speed: 1, run: true },
+  aim: { speed: 0, aiming: true },
+  cast: { speed: 0, casting: true },
+  crouch: { speed: 0, crouch: true },
+  drive: { speed: 0.4, driving: true },
+};
+for (let i = 0; i < 30; i++) model.update(1 / 60, states[pose] || {});
+model.setWeapon('pistol');
+
+const headPos = new THREE.Vector3();
+model.head.getWorldPosition(headPos);
+const footY = 0;
+const bodyTop = headPos.y + 0.16;
+
+function place() {
+  const aspect = innerWidth / innerHeight;
+  if (view === 'face') {
+    model.group.rotation.y = 0;
+    camera.fov = 26;
+    camera.position.set(headPos.x + 0.06, headPos.y + 0.035, headPos.z + 1.05);
+    camera.lookAt(headPos.x, headPos.y - 0.01, headPos.z);
+  } else if (view === 'body') {
+    model.group.rotation.y = 0;
+    camera.fov = 34;
+    const h = bodyTop + 0.08;
+    camera.position.set(1.15, h * 0.58, 3.1);
+    camera.lookAt(0, h * 0.52, 0);
+  } else if (view === 'side') {
+    model.group.rotation.y = 0;
+    camera.fov = 30;
+    camera.position.set(headPos.x + 1.15, headPos.y + 0.02, headPos.z + 0.02);
+    camera.lookAt(headPos.x, headPos.y - 0.02, headPos.z);
+  } else if (view === 'back') {
+    model.group.rotation.y = 0;
+    camera.fov = 30;
+    camera.position.set(headPos.x - 0.15, headPos.y + 0.03, headPos.z - 1.15);
+    camera.lookAt(headPos.x, headPos.y - 0.01, headPos.z);
+  } else if (view === 'three4') {
+    model.group.rotation.y = 0;
+    camera.fov = 30;
+    camera.position.set(headPos.x + 0.72, headPos.y + 0.16, headPos.z + 0.86);
+    camera.lookAt(headPos.x, headPos.y - 0.02, headPos.z);
+  } else {
+    camera.fov = 32;
+    camera.position.set(1.4, 1.1, 1.7);
+    camera.lookAt(0, 0.9, 0);
+  }
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+}
+place();
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  place();
+});
+
+function loop() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+window.__READY = true;
+</script>
+</body>
+</html>

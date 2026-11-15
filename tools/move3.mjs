@@ -1,0 +1,21 @@
+﻿import puppeteer from 'puppeteer-core';
+const chrome='C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const browser=await puppeteer.launch({executablePath:chrome,headless:'new',args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader','--ignore-gpu-blocklist']});
+const page=await browser.newPage();
+const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+await page.setViewport({width:800,height:500,deviceScaleFactor:1});
+await page.goto('http://127.0.0.1:8123/?quality=low',{waitUntil:'load',timeout:180000});
+await page.waitForFunction('window.__READY===true',{timeout:180000,polling:500});
+await page.evaluate(()=>{ window.__game.composer.render=()=>{}; window.__game.startNewGame(); });
+await new Promise(r=>setTimeout(r,6500));
+console.log('mode', await page.evaluate(()=>({mode:window.__game.mode,dlg:window.__game.dialogueOpen,obj:document.getElementById('mission-obj').textContent,task:window.__game.missions.task?.type})));
+for(let i=0;i<30;i++){const open=await page.evaluate(()=>window.__game.dialogueOpen); if(!open)break; await page.click('.dlg-box').catch(()=>{}); await new Promise(r=>setTimeout(r,150));}
+await page.keyboard.down('w');
+await new Promise(r=>setTimeout(r,900));
+console.log('move', await page.evaluate(()=>{const g=window.__game,h=g.player;return {mode:g.mode,pos:h.pos.toArray(),vel:h.vel.toArray(),moving:h.moving,keys:[...g.input.keys],move:{...g.input.move}};}));
+await page.keyboard.up('w');
+await page.keyboard.press('Space');
+await new Promise(r=>setTimeout(r,300));
+console.log('jump', await page.evaluate(()=>({y:window.__game.player.y,grounded:window.__game.player.grounded})));
+console.log('errors',errors.slice(0,3));
+await browser.close();

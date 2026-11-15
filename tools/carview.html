@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Car viewer</title>
+<style>
+  html,body{margin:0;height:100%;background:#20242b;overflow:hidden}
+  canvas{display:block}
+  #hint{position:fixed;left:8px;top:8px;color:#9fb0c0;font:11px monospace;z-index:9}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.js",
+  "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hint">car viewer</div>
+<script type="module">
+import * as THREE from 'three';
+import { Vehicle } from '/src/vehicles.js';
+
+const params = new URLSearchParams(location.search);
+const type = params.get('type') || 'sports';
+const view = params.get('view') || 'three4';
+const steer = parseFloat(params.get('steer') || '0.85');
+const color = params.get('color');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a2f37);
+scene.fog = new THREE.Fog(0x2a2f37, 30, 90);
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 200);
+
+const key = new THREE.DirectionalLight(0xfff2e0, 3.4);
+key.position.set(6, 9, 7);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+key.shadow.camera.top = 12; key.shadow.camera.bottom = -12;
+key.shadow.bias = -0.0006;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xbcd4ff, 1.5);
+fill.position.set(-8, 5, 4);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0x9fc6ff, 2.6);
+rim.position.set(-3, 4, -9);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a2620, 1.0));
+scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+
+// studio floor with a subtle grid so the wheels read against it
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(30, 64),
+  new THREE.MeshStandardMaterial({ color: 0x33383f, roughness: 0.55, metalness: 0.05 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const env = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0x1a2030);
+const box = new THREE.Mesh(new THREE.BoxGeometry(40, 40, 40), new THREE.MeshBasicMaterial({ color: 0x2c3446, side: THREE.BackSide }));
+envScene.add(box);
+for (const [x, y, z, c] of [[14, 12, 8, 0xfff0dd], [-14, 9, -6, 0x9fc6ff], [0, 16, -14, 0xffffff]]) {
+  const l = new THREE.Mesh(new THREE.PlaneGeometry(12, 8), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
+  l.position.set(x, y, z); l.lookAt(0, 0, 0); envScene.add(l);
+}
+scene.environment = env.fromScene(envScene, 0.02).texture;
+
+const fakeGame = { scene, world: { isWater: () => false, rain: 0, storm: 0, collideCircle: () => null }, elapsed: 0, fx: null, audio: null, crowd: { agents: [] } };
+const car = new Vehicle(fakeGame, type, 0, 0, 0, color ? { color: parseInt(color, 16) } : {});
+scene.add(car.group);
+if (steer) {
+  car.steer = steer;
+  for (const w of car.wheels) if (w.front) w.group.rotation.y = -steer * 0.46;
+}
+car.bodyGroup.updateMatrixWorld(true);
+
+const views = {
+  three4: [6.4, 3.0, 7.6],
+  front: [0.4, 1.5, 9.2],
+  rear: [-0.5, 1.8, -9.4],
+  side: [10.2, 1.6, 0.2],
+  top: [0.2, 11, 2.2],
+  close: [4.2, 1.5, 4.6],
+  wheel: [3.6, 1.0, 3.6],
+};
+const p = views[view] || views.three4;
+camera.position.set(p[0], p[1], p[2]);
+camera.lookAt(0, 0.85, 0);
+camera.aspect = innerWidth / innerHeight;
+camera.updateProjectionMatrix();
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+function loop() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+window.__READY = true;
+window.__car = car;
+</script>
+</body>
+</html>

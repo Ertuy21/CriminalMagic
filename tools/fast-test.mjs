@@ -1,0 +1,20 @@
+﻿import puppeteer from 'puppeteer-core';
+const chrome='C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const browser=await puppeteer.launch({executablePath:chrome,headless:'new',args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader','--ignore-gpu-blocklist']});
+const page=await browser.newPage();
+const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+await page.setViewport({width:800,height:500,deviceScaleFactor:1});
+await page.goto('http://127.0.0.1:8123/?quality=low',{waitUntil:'load',timeout:180000});
+await page.waitForFunction('window.__READY===true',{timeout:180000,polling:500});
+await page.evaluate(()=>{ window.__game.composer.render=()=>{}; window.__game.startNewGame(); });
+await new Promise(r=>setTimeout(r,2000));
+for(let i=0;i<30;i++){const open=await page.evaluate(()=>window.__game.dialogueOpen); if(open){await page.click('.dlg-box').catch(()=>{});} await new Promise(r=>setTimeout(r,120));}
+console.log('state', await page.evaluate(()=>{const g=window.__game;return {mode:g.mode,dlg:g.dialogueOpen,obj:document.getElementById('mission-obj').textContent,pos:g.player.pos.toArray(),task:g.missions.task?.type};}));
+await page.keyboard.down('w');
+await new Promise(r=>setTimeout(r,800));
+console.log('during', await page.evaluate(()=>{const g=window.__game,h=g.player;return {keys:[...g.input.keys],move:{...g.input.move},pos:h.pos.toArray(),vel:h.vel.toArray(),moving:h.moving,mode:g.mode};}));
+await page.keyboard.up('w');
+await new Promise(r=>setTimeout(r,500));
+console.log('after', await page.evaluate(()=>{const g=window.__game;return {pos:g.player.pos.toArray(),obj:document.getElementById('mission-obj').textContent};}));
+console.log('errors', errors.slice(0,5));
+await browser.close();

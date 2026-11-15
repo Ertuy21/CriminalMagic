@@ -1,0 +1,35 @@
+﻿import puppeteer from 'puppeteer-core';
+const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const browser = await puppeteer.launch({ executablePath: chrome, headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader','--ignore-gpu-blocklist','--window-size=1000,800'] });
+const page = await browser.newPage();
+page.on('pageerror', e => console.log('ERR', e.message));
+await page.setViewport({ width: 1000, height: 800, deviceScaleFactor: 1 });
+await page.goto('http://127.0.0.1:8123/?play=1&quality=medium', { waitUntil: 'load', timeout: 180000 });
+await page.waitForFunction('window.__READY === true', { timeout: 180000, polling: 500 });
+await new Promise(r => setTimeout(r, 1200));
+await page.evaluate(() => {
+  const g = window.__game;
+  g.missions.task = null; g.missions.current = null; g.missions.clearMarker(); g.ui.hideMission();
+  g.paused = true;
+  g.world.setHour(13.5);
+  g.player.pos.set(760, 0, 120); g.player.y = 0; g.player.yaw = 0; g.player.group.rotation.y = 0;
+  g.companion.group.visible = false;
+  g.crowd.agents.forEach(a => a.active = false);
+  g.ui.el.hud.classList.add('hidden');
+  g.cameraRig.update = () => {};
+  g.camera.position.set(762.4, 1.35, 122.6);
+  g.camera.lookAt(760, 1.1, 120);
+  g.camera.fov = 32; g.camera.updateProjectionMatrix();
+});
+await new Promise(r => setTimeout(r, 600));
+await page.screenshot({ path: 'shots/model2-mage.png' });
+await page.evaluate(() => {
+  const g = window.__game;
+  g.switchCharacter('lucia');
+  g.player.pos.set(760, 0, 120); g.player.y = 0; g.player.yaw = 0; g.player.group.rotation.y = 0;
+  g.companion.group.visible = false;
+  g.camera.position.set(762.4, 1.35, 122.6); g.camera.lookAt(760, 1.1, 120);
+});
+await new Promise(r => setTimeout(r, 600));
+await page.screenshot({ path: 'shots/model2-lucia.png' });
+await browser.close();
